@@ -408,7 +408,7 @@ function renderListItems(cat, items) {
     gathering:     item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
         <div class="title">${item['物品名称']||item.名称||'-'}</div>
-        <div class="sub">📍${item.采集地||'?'} ${item.区域?'区域'+item.区域:''} ${item.采集法||''}</div>
+        <div class="sub">📍${item.采集场||'?'} ${item.区域||''} ${item.采集点||''}</div>
         <div style="font-size:11px;color:var(--dim);margin-top:1px">${item.难度||''} ${item.备注?'('+item.备注+')':''}</div>
       </div>
       <div class="badge">${item['概率(%)']?item['概率(%)']+'%':''}</div>
@@ -637,11 +637,11 @@ function renderGatheringDetail(item) {
   const prob = item['概率(%)'];
   return `<div class="detail">
     <h2>${item['物品名称']||'-'}</h2>
-    <div class="meta">采集地：${item.采集地||'-'}</div>
+    <div class="meta">采集场：${item.采集场||'-'}</div>
     <table class="detail-table">
-      <tr><td>采集地</td><td>${item.采集地||'-'}</td></tr>
+      <tr><td>采集场</td><td>${item.采集场||'-'}</td></tr>
       <tr><td>区域</td><td>${item.区域||'-'}</td></tr>
-      <tr><td>采集法</td><td>${item.采集法||'-'}</td></tr>
+      <tr><td>采集点</td><td>${item.采集点||'-'}</td></tr>
       <tr><td>难度</td><td>${item.难度||'-'}</td></tr>
       <tr><td>概率</td><td style="color:var(--accent);font-weight:600">${prob!=null?prob+'%':'-'}</td></tr>
       <tr><td>数量</td><td>${item.数量!=null?item.数量:'-'}</td></tr>
