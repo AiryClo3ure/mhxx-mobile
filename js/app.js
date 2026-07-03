@@ -288,6 +288,22 @@ function renderList(cat, data, query, filterField, filterValue) {
     items = items.filter(i => String(i[filterField]) === String(filterValue));
   }
 
+  // Aggregate gathering items by ID
+  if (cat.id === 'gathering') {
+    const groups = {};
+    for (const item of items) {
+      const gid = item.ID;
+      if (!groups[gid]) {
+        groups[gid] = { id: gid, name: item['物品名称'] || '未知', locations: [] };
+      }
+      if (item['物品名称']) groups[gid].name = item['物品名称'];
+      groups[gid].locations.push(item);
+    }
+    items = Object.values(groups);
+    // Sort by name
+    items.sort((a, b) => (a.name||'').localeCompare(b.name||'', 'zh'));
+  }
+
   lastFilteredItems = items;
 
   if (items.length === 0) {
@@ -409,13 +425,12 @@ function renderListItems(cat, items) {
       </div>
     </div>`,
 
-    gathering:     item => `<div class="list-item" data-id="${item.ID}">
+    gathering:     item => `<div class="list-item" data-id="${item.id||item.ID}">
       <div class="info">
-        <div class="title">${item['物品名称']||item.名称||'-'}</div>
-        <div class="sub">📍${item.采集场||'?'} ${item.区域||''} ${item.采集点||''}</div>
-        <div style="font-size:11px;color:var(--dim);margin-top:1px">${item.难度||''} ${item.备注?'('+item.备注+')':''}</div>
+        <div class="title">${item.name||'-'}</div>
+        <div class="sub">${item.locations||item.locations===0?item.locations+' 个采集点':'...'}</div>
       </div>
-      <div class="badge">${item['概率(%)']?item['概率(%)']+'%':''}</div>
+      <div class="badge">${item.locations||''}</div>
     </div>`,
 
     crafting_materials: item => `<div class="list-item" data-id="${item.ID}">
@@ -637,21 +652,54 @@ function renderLocationsDetail(item) {
   </div>`;
 }
 
-function renderGatheringDetail(item) {
-  const prob = item['概率(%)'];
-  return `<div class="detail">
-    <h2>${item['物品名称']||'-'}</h2>
-    <div class="meta">采集场：${item.采集场||'-'}</div>
-    <table class="detail-table">
-      <tr><td>采集场</td><td>${item.采集场||'-'}</td></tr>
-      <tr><td>区域</td><td>${item.区域||'-'}</td></tr>
-      <tr><td>采集点</td><td>${item.采集点||'-'}</td></tr>
-      <tr><td>难度</td><td>${item.难度||'-'}</td></tr>
-      <tr><td>概率</td><td style="color:var(--accent);font-weight:600">${prob!=null?prob+'%':'-'}</td></tr>
-      <tr><td>数量</td><td>${item.数量!=null?item.数量:'-'}</td></tr>
-      <tr><td>备注</td><td>${item.备注||'-'}</td></tr>
-    </table>
-  </div>`;
+const DIFF_SORT = { '下位':0, '上位':1, 'G位':2, 'G級':2 };
+
+function renderGatheringDetail(group) {
+  // group = { id, name, locations: [...] }
+  const locs = group.locations || [];
+
+  // Sort by difficulty order, then by area number
+  const areaNum = a => {
+    const m = a.match(/\d+/);
+    return m ? parseInt(m[0]) : 999;
+  };
+  locs.sort((a, b) => {
+    const da = DIFF_SORT[a['难度']] ?? 99;
+    const db = DIFF_SORT[b['难度']] ?? 99;
+    if (da !== db) return da - db;
+    return areaNum(a['区域']||'') - areaNum(b['区域']||'');
+  });
+
+  // Group by difficulty
+  const byDiff = {};
+  for (const loc of locs) {
+    const d = loc['难度']||'其他';
+    if (!byDiff[d]) byDiff[d] = [];
+    byDiff[d].push(loc);
+  }
+
+  let html = `<div class="detail">
+    <h2>${group.name||'-'}</h2>
+    <div class="meta">共 ${locs.length} 个采集点</div>`;
+
+  for (const [diff, rows] of Object.entries(byDiff)) {
+    html += `<div class="section-title">${diff}</div>`;
+    html += `<table class="gather-table">`;
+    for (const r of rows) {
+      const prob = r['概率(%)'];
+      html += `<tr>
+        <td><span style="color:var(--text)">${r['采集场']||'-'}</span><br><span style="font-size:12px;color:var(--dim)">${r['区域']||''} ${r['采集点']||''}</span></td>
+        <td style="text-align:right;vertical-align:middle;color:var(--accent);font-weight:600;font-size:16px">${prob!=null?prob+'%':'-'}</td>
+      </tr>`;
+      if (r['备注']) {
+        html += `<tr><td colspan="2" style="font-size:12px;color:var(--dim);padding:0 12px 6px">${r['备注']}</td></tr>`;
+      }
+    }
+    html += `</table>`;
+  }
+
+  html += `</div>`;
+  return html;
 }
 
 function renderGenericDetail(item) {
