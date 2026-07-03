@@ -135,6 +135,10 @@ function navigate(page, opt, fromHistory) {
   }
 
   currentView = { page, category: null, item: null, filter: {} };
+  // Reset weapon type filter when going to non-weapon pages
+  if (page !== 'category' || opt?.id !== 'weapons') {
+    weaponTypeFilter = '';
+  }
   if (page !== 'category') {
     $('.search-bar')?.classList.remove('show');
     searchQuery = '';
@@ -177,6 +181,11 @@ function goBack() {
   const prev = navHistory.pop();
   if (!prev) { navigate('home', null, true); backLock = false; return; }
   if (prev.page === 'detail' || prev.page === 'category') {
+    const cat = CATEGORIES.find(c => c.id === prev.category);
+    if (cat) navigate('category', cat, true);
+    else navigate('home', null, true);
+  } else if (prev.page === 'weapon_types') {
+    weaponTypeFilter = '';
     const cat = CATEGORIES.find(c => c.id === prev.category);
     if (cat) navigate('category', cat, true);
     else navigate('home', null, true);
@@ -260,14 +269,59 @@ function renderMore() {
 // === Category list ===
 let searchQuery = '';
 
-async function renderCategory(cat) {
-  setTitle(cat.label);
-  $('.search-bar').classList.add('show');
-  const sb = $('.search-bar input');
-  sb.value = searchQuery;
-  sb.placeholder = `搜索${cat.label}...`;
+const WEAPON_TYPES = [
+  ['大剑','大剑','⚔️'], ['太刀','太刀','🗡️'], ['片手剑','片手剑','🛡️'],
+  ['双剑','双剑','⚡'], ['大锤','大锤','🔨'], ['狩猎笛','狩猎笛','🎵'],
+  ['长枪','长枪','🔱'], ['铳枪','铳枪','💥'], ['斩击斧','斩击斧','🪓'],
+  ['盾斧','盾斧','🔮'], ['操虫棍','操虫棍','🐛'], ['轻弩','轻弩','🔫'],
+  ['重弩','重弩','🏹'], ['弓','弓','🎯'],
+];
 
+let weaponTypeFilter = '';
+
+async function renderCategory(cat) {
   const c = $('.content');
+
+  // Weapons: show type selection first
+  if (cat.id === 'weapons' && !weaponTypeFilter) {
+    setTitle('选择武器类型');
+    $('.search-bar').classList.remove('show');
+    let html = '<div class="home-grid">';
+    for (const [type, label, icon] of WEAPON_TYPES) {
+      html += `<div class="home-card" data-type="${type}">
+        <div class="icon">${icon}</div>
+        <div class="label">${label}</div>
+      </div>`;
+    }
+    html += '</div>';
+    c.innerHTML = html;
+    $$('.home-card').forEach(el => {
+      el.addEventListener('click', () => {
+        navHistory.push({ page: 'weapon_types', category: 'weapons' });
+        weaponTypeFilter = el.dataset.type;
+        renderCategory({ ...cat, weaponType: el.dataset.type });
+      });
+    });
+    $('.search-bar').classList.remove('show');
+    updateBack();
+    return;
+  }
+
+  // Reset filter when entering weapons fresh
+  if (cat.id !== 'weapons') weaponTypeFilter = '';
+  const title = cat.weaponType ? cat.weaponType : cat.label;
+  setTitle(title);
+
+  const showSearch = cat.id !== 'weapons' || cat.weaponType;
+  if (showSearch) {
+    $('.search-bar').classList.add('show');
+    const sb = $('.search-bar input');
+    sb.value = searchQuery;
+    sb.placeholder = `搜索${title}...`;
+  } else {
+    $('.search-bar').classList.remove('show');
+  }
+
   c.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
 
   const data = await loadData(cat.file);
@@ -286,6 +340,11 @@ function renderList(cat, data, query, filterField, filterValue) {
   }
   if (filterField && filterValue) {
     items = items.filter(i => String(i[filterField]) === String(filterValue));
+  }
+  // Filter weapons by type
+  if (cat.id === 'weapons' && weaponTypeFilter) {
+    const typeField = Object.keys(data[0]||{})[1]; // field index 1 = 类型
+    items = items.filter(i => i[typeField] === weaponTypeFilter);
   }
 
   // Aggregate gathering items by ID
