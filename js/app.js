@@ -168,11 +168,15 @@ function updateBack() {
   b.classList.toggle('show', show);
 }
 
+let backLock = false;
 function goBack() {
+  if (backLock) return; // Prevent double-fire from rapid clicks
+  backLock = true;
+  setTimeout(() => backLock = false, 300);
+
   const prev = navHistory.pop();
-  if (!prev) return navigate('home');
+  if (!prev) { navigate('home', null, true); backLock = false; return; }
   if (prev.page === 'detail' || prev.page === 'category') {
-    // Restore the category list
     const cat = CATEGORIES.find(c => c.id === prev.category);
     if (cat) navigate('category', cat, true);
     else navigate('home', null, true);
@@ -685,7 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Build header
   const header = $('.header');
   header.innerHTML = `
-    <button class="back" onclick="goBack()">‹</button>
+    <button class="back">‹</button>
     <h1>MHXX 图鉴</h1>
     <button class="search-toggle" id="searchToggle">🔍</button>
   `;
