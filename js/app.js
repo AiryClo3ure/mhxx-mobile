@@ -347,23 +347,10 @@ function renderList(cat, data, query, filterField, filterValue) {
   const c = $('.content');
   let items = data;
 
-  if (query) {
-    const fields = guessSearchFields(cat.id, data[0]);
-    items = searchItems(items, query, fields);
-  }
-  if (filterField && filterValue) {
-    items = items.filter(i => String(i[filterField]) === String(filterValue));
-  }
-  // Filter weapons by type
-  if (cat.id === 'weapons' && weaponTypeFilter) {
-    const typeField = Object.keys(data[0]||{})[1]; // field index 1 = 类型
-    items = items.filter(i => i[typeField] === weaponTypeFilter);
-  }
-
-  // Aggregate gathering items by ID
+  // Gather: aggregate all items first, then search on group names
   if (cat.id === 'gathering') {
     const groups = {};
-    for (const item of items) {
+    for (const item of data) {
       const gid = item.ID;
       if (!groups[gid]) {
         groups[gid] = { id: gid, name: item['物品名称'] || '未知', locations: [] };
@@ -372,8 +359,25 @@ function renderList(cat, data, query, filterField, filterValue) {
       groups[gid].locations.push(item);
     }
     items = Object.values(groups);
-    // Sort by name
+    if (query) {
+      const q = query.toLowerCase();
+      items = items.filter(g => g.name.toLowerCase().includes(q));
+    }
     items.sort((a, b) => (a.name||'').localeCompare(b.name||'', 'zh'));
+  } else {
+    // Normal search for non-gathering categories
+    if (query) {
+      const fields = guessSearchFields(cat.id, data[0]);
+      items = searchItems(items, query, fields);
+    }
+    if (filterField && filterValue) {
+      items = items.filter(i => String(i[filterField]) === String(filterValue));
+    }
+    // Filter weapons by type
+    if (cat.id === 'weapons' && weaponTypeFilter) {
+      const typeField = Object.keys(data[0]||{})[1];
+      items = items.filter(i => i[typeField] === weaponTypeFilter);
+    }
   }
 
   lastFilteredItems = items;
