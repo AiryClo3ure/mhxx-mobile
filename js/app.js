@@ -283,11 +283,8 @@ function renderMore() {
 let searchQuery = '';
 
 const WEAPON_TYPES = [
-  ['大剑','大剑','⚔️'], ['太刀','太刀','🗡️'], ['片手剑','片手剑','🛡️'],
-  ['双剑','双剑','⚡'], ['大锤','大锤','🔨'], ['狩猎笛','狩猎笛','🎵'],
-  ['长枪','长枪','🔱'], ['铳枪','铳枪','💥'], ['斩击斧','斩击斧','🪓'],
-  ['盾斧','盾斧','🔮'], ['操虫棍','操虫棍','🐛'], ['轻弩','轻弩','🔫'],
-  ['重弩','重弩','🏹'], ['弓','弓','🎯'],
+  '大剑','太刀','片手剑','双剑','大锤','狩猎笛',
+  '长枪','铳枪','斩击斧','盾斧','操虫棍','轻弩','重弩','弓',
 ];
 
 let weaponTypeFilter = '';
@@ -300,10 +297,9 @@ async function renderCategory(cat) {
     setTitle('选择武器类型');
     $('.search-bar').classList.remove('show');
     let html = '<div class="home-grid">';
-    for (const [type, label, icon] of WEAPON_TYPES) {
-      html += `<div class="home-card" data-type="${type}">
-        <div class="icon">${icon}</div>
-        <div class="label">${label}</div>
+    for (const type of WEAPON_TYPES) {
+      html += `<div class="home-card" data-type="${type}" style="grid-column:span 1;padding:16px">
+        <div class="label" style="font-size:17px;color:var(--text)">${type}</div>
       </div>`;
     }
     html += '</div>';
