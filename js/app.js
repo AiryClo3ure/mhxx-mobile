@@ -31,7 +31,8 @@ const TABS = [
 ];
 
 let currentView = { page:'home', category:null, item:null, filter:{} };
-let navHistory = []; // stack of { page, category }
+let navHistory = [];
+let counts = {}; // category counts loaded from counts.json
 
 async function loadData(file) {
   if (cache[file]) return cache[file];
@@ -207,10 +208,9 @@ function uniqueValues(items, field) {
 function renderHome() {
   setTitle('MHXX 图鉴');
   const c = $('.content');
-  // Show all 12 categories in grid
   let html = '<div class="home-grid">';
   for (const cat of CATEGORIES) {
-    const count = cache[cat.file]?.length || '...';
+    const count = counts[cat.id] ?? '...';
     html += `<div class="home-card" data-id="${cat.id}">
       <div class="icon">${cat.icon}</div>
       <div class="label">${cat.label}</div>
@@ -235,7 +235,7 @@ function renderMore() {
   const more = CATEGORIES.slice(5);
   let html = '<div class="home-grid">';
   for (const cat of more) {
-    const count = cache[cat.file]?.length || '...';
+    const count = counts[cat.id] ?? '...';
     html += `<div class="home-card" data-id="${cat.id}">
       <div class="icon">${cat.icon}</div>
       <div class="label">${cat.label}</div>
@@ -725,9 +725,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setupSearch();
 
-  // Initial render
+  // Load counts first (tiny file), then render home
+  loadData('counts.json').then(c => { counts = c; updateCounts(); });
   navigate('home');
 });
+
+function updateCounts() {
+  $$('.home-card').forEach(el => {
+    const id = el.dataset.id;
+    if (counts[id]) el.querySelector('.count').textContent = counts[id];
+  });
+}
 
 // Click delegation for list items
 document.addEventListener('click', e => {
