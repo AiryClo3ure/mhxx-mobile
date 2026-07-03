@@ -1,6 +1,19 @@
 // MHXX Dex Mobile - Main Application
+const APP_VER = 3;
 const DATA_BASE = 'data/';
 const cache = {};
+
+// Force refresh when version changes (clears stale SW cache)
+if (localStorage.getItem('app_ver') != APP_VER) {
+  localStorage.setItem('app_ver', APP_VER);
+  if ('caches' in window) {
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => caches.delete(k)))
+    ).then(() => window.location.reload(true)).catch(() => window.location.reload(true));
+  } else {
+    window.location.reload(true);
+  }
+}
 
 function $(sel, ctx) { return (ctx||document).querySelector(sel); }
 function $$(sel, ctx) { return [...(ctx||document).querySelectorAll(sel)]; }
