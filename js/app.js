@@ -500,9 +500,9 @@ function renderListItems(cat, items) {
     gathering:     item => `<div class="list-item" data-id="${item.id||item.ID}">
       <div class="info">
         <div class="title">${item.name||'-'}</div>
-        <div class="sub">${item.locations||item.locations===0?item.locations+' 个采集点':'...'}</div>
+        <div class="sub">${item.locations?item.locations.length+' 个采集点':'...'}</div>
       </div>
-      <div class="badge">${item.locations||''}</div>
+      <div class="badge">${item.locations?item.locations.length:''}</div>
     </div>`,
 
     crafting_materials: item => `<div class="list-item" data-id="${item.ID}">
