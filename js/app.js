@@ -31,6 +31,7 @@ const TABS = [
 ];
 
 let currentView = { page:'home', category:null, item:null, filter:{} };
+let navHistory = []; // stack of { page, category }
 
 async function loadData(file) {
   if (cache[file]) return cache[file];
@@ -124,14 +125,20 @@ function showError(msg) {
 }
 
 // === Navigation ===
-function navigate(page, opt) {
+function navigate(page, opt, fromHistory) {
+  // Push current page to history (except when going back or initial load)
+  if (!fromHistory && page !== 'home') {
+    navHistory.push({ page: currentView.page, category: currentView.category });
+    // Keep history manageable
+    if (navHistory.length > 20) navHistory.shift();
+  }
+
   currentView = { page, category: null, item: null, filter: {} };
-  // Hide search bar unless on category page
   if (page !== 'category') {
     $('.search-bar')?.classList.remove('show');
     searchQuery = '';
   }
-  if (page === 'home') renderHome();
+  if (page === 'home') { navHistory = []; renderHome(); }
   else if (page === 'more') renderMore();
   else if (page === 'category') {
     currentView.category = opt?.id;
@@ -161,10 +168,15 @@ function updateBack() {
 }
 
 function goBack() {
-  if (currentView.page === 'detail') {
-    navigate('category', { id: currentView.category });
-  } else if (currentView.page === 'category') {
-    navigate('home');
+  const prev = navHistory.pop();
+  if (!prev) return navigate('home');
+  if (prev.page === 'detail' || prev.page === 'category') {
+    // Restore the category list
+    const cat = CATEGORIES.find(c => c.id === prev.category);
+    if (cat) navigate('category', cat, true);
+    else navigate('home', null, true);
+  } else {
+    navigate(prev.page, null, true);
   }
 }
 
@@ -376,27 +388,28 @@ function renderListItems(cat, items) {
         <div class="title">${item.怪物名称||'-'} → ${item.物品名称||''}</div>
         <div class="sub">${item.方法||''} ${item.难度||''} ${item.数量?'×'+item.数量:''}</div>
       </div>
-      <div class="badge">${item.概率||item['概率(%)']||''}${item['概率(%)']?'%':''}</div>
+      <div class="badge" style="font-size:13px">${item.概率||item['概率(%)']||''}${item['概率(%)']?'%':''}</div>
     </div>`,
 
     monster_hitzones: item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
-        <div class="title">${item.怪物名称||'-'}</div>
-        <div class="sub">${item.部位||''}</div>
+        <div class="title">${item.怪物名称||'-'} — ${item.部位||''}</div>
+        <div class="sub">斩:${item.斩||'-'} 打:${item.打||'-'} 弾:${item.弾||'-'} 🔥:${item.火||'-'} 水:${item.水||'-'} 雷:${item.雷||'-'} 氷:${item.氷||'-'} 龙:${item.龙||'-'}</div>
       </div>
     </div>`,
 
     monster_locations: item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
         <div class="title">${item.怪物名称||'-'}</div>
-        <div class="sub">${item.场地||''}</div>
+        <div class="sub">🗺️ ${item.场地||''} 初始:${item.初始区域||'-'}</div>
       </div>
     </div>`,
 
     gathering:     item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
         <div class="title">${item['物品名称']||item.名称||'-'}</div>
-        <div class="sub">${item.采集地||''} ${item.区域||''} ${item.采集法||''}</div>
+        <div class="sub">📍${item.采集地||'?'} ${item.区域?'区域'+item.区域:''} ${item.采集法||''}</div>
+        <div style="font-size:11px;color:var(--dim);margin-top:1px">${item.难度||''} ${item.备注?'('+item.备注+')':''}</div>
       </div>
       <div class="badge">${item['概率(%)']?item['概率(%)']+'%':''}</div>
     </div>`,
@@ -445,11 +458,11 @@ async function renderDetail(opt) {
     skills: renderSkillDetail,
     decorations: renderDecorationDetail,
     recipes: renderRecipeDetail,
-    monster_drops: renderGenericDetail,
+    monster_drops: renderMonsterDropDetail,
     monster_hitzones: renderHitzoneDetail,
     monster_locations: renderLocationsDetail,
-    gathering: renderGenericDetail,
-    crafting_materials: renderGenericDetail,
+    gathering: renderGatheringDetail,
+    crafting_materials: renderCraftingDetail,
   };
 
   const render = detailMap[category];
@@ -580,6 +593,36 @@ function renderHitzoneDetail(item) {
   </div>`;
 }
 
+function renderMonsterDropDetail(item) {
+  const prob = item['概率(%)'] || item.概率;
+  return `<div class="detail">
+    <h2>${item.怪物名称||'-'}</h2>
+    <div class="meta">掉落物品</div>
+    <table class="detail-table">
+      <tr><td>怪物</td><td>${item.怪物名称||'-'}</td></tr>
+      <tr><td>物品</td><td>${item.物品名称||'-'}</td></tr>
+      <tr><td>方法</td><td>${item.方法||'-'}</td></tr>
+      <tr><td>难度</td><td>${item.难度||'-'}</td></tr>
+      <tr><td>数量</td><td>${item.数量!=null?item.数量:'-'}</td></tr>
+      <tr><td>概率</td><td style="color:var(--accent);font-weight:600">${prob!=null?prob+'%':'-'}</td></tr>
+    </table>
+  </div>`;
+}
+
+function renderCraftingDetail(item) {
+  return `<div class="detail">
+    <h2>${item['武器名称']||item.名称||'-'}</h2>
+    <div class="meta">制作材料</div>
+    <table class="detail-table">
+      <tr><td>武器</td><td>${item['武器名称']||item.名称||'-'}</td></tr>
+      <tr><td>素材</td><td>${item.素材名称||'-'}</td></tr>
+      <tr><td>数量</td><td>${item.数量!=null?item.数量:'-'}</td></tr>
+      <tr><td>种类</td><td>${item.种类||'-'}</td></tr>
+      <tr><td>关键</td><td>${item.关键?'✅ 是':'-'}</td></tr>
+    </table>
+  </div>`;
+}
+
 function renderLocationsDetail(item) {
   return `<div class="detail">
     <h2>${item.怪物名称||'-'}</h2>
@@ -587,6 +630,23 @@ function renderLocationsDetail(item) {
       ['场地','场地'],['初始区域','初始区域'],
       ['移动区域','移动区域'],['休息区域','休息区域'],
     ])}
+  </div>`;
+}
+
+function renderGatheringDetail(item) {
+  const prob = item['概率(%)'];
+  return `<div class="detail">
+    <h2>${item['物品名称']||'-'}</h2>
+    <div class="meta">采集地：${item.采集地||'-'}</div>
+    <table class="detail-table">
+      <tr><td>采集地</td><td>${item.采集地||'-'}</td></tr>
+      <tr><td>区域</td><td>${item.区域||'-'}</td></tr>
+      <tr><td>采集法</td><td>${item.采集法||'-'}</td></tr>
+      <tr><td>难度</td><td>${item.难度||'-'}</td></tr>
+      <tr><td>概率</td><td style="color:var(--accent);font-weight:600">${prob!=null?prob+'%':'-'}</td></tr>
+      <tr><td>数量</td><td>${item.数量!=null?item.数量:'-'}</td></tr>
+      <tr><td>备注</td><td>${item.备注||'-'}</td></tr>
+    </table>
   </div>`;
 }
 
