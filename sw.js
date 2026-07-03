@@ -1,4 +1,4 @@
-const CACHE = 'mhxx-dex-v3';
+const CACHE = 'mhxx-dex-v4';
 const ASSETS = [
   'index.html',
   'css/style.css',
@@ -7,6 +7,9 @@ const ASSETS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
 ];
+
+// Force delete everything on activate
+const FORCE_DELETE = true;
 
 self.addEventListener('install', e => {
   e.waitUntil(
