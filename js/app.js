@@ -409,7 +409,7 @@ function renderListItems(cat, items) {
     weapons:       item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
         <div class="title">${item.名称||item.武器名称||'-'}</div>
-        <div class="sub">${item.类型||''} ${item.攻击力?'ATK:'+item.攻击力:''} ${item.会心率?item.会心率+'%':''}</div>
+        <div class="sub">${item.类型||''} ${item.攻击力?'攻击:'+item.攻击力:''} ${item.会心率?item.会心率+'%':''}</div>
       </div>
       <div class="badge">${item.攻击力||''}</div>
     </div>`,
@@ -417,7 +417,7 @@ function renderListItems(cat, items) {
     armor:         item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
         <div class="title">${item.名称||'-'}</div>
-        <div class="sub">${item.部位||''} DEF:${item.防御力||0} ${item.火耐性?'🔥'+item.火耐性:''}</div>
+        <div class="sub">${item.部位||''} 防御:${item.防御力||0} ${item.火耐性?'🔥'+item.火耐性:''}</div>
       </div>
       <div class="badge">${item.防御力||''}</div>
     </div>`,
@@ -433,7 +433,7 @@ function renderListItems(cat, items) {
     monsters:      item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
         <div class="title">${item.名称||'-'}</div>
-        <div class="sub">${item.分类||''} HP:${item.基础HP||0}</div>
+        <div class="sub">${item.分类||''} 体力:${item.基础HP||0}</div>
       </div>
       <div class="badge safe">${item.基础HP||''}</div>
     </div>`,
@@ -480,7 +480,7 @@ function renderListItems(cat, items) {
     monster_locations: item => `<div class="list-item" data-id="${item.ID}">
       <div class="info">
         <div class="title">${item.怪物名称||'-'}</div>
-        <div class="sub">🗺️ ${item.场地||''} 初始:${item.初始区域||'-'}</div>
+        <div class="sub">🗺️ ${_t(item.场地)||''} 初始:${item.初始区域||'-'}</div>
       </div>
     </div>`,
 
@@ -551,12 +551,12 @@ async function renderDetail(opt) {
   }
 }
 
-function renderTable(item, fields) {
+function renderTable(item, fields, translate) {
   let html = '<table class="detail-table">';
   for (const [key, label] of fields) {
     const val = item[key];
     if (val === null || val === undefined || val === '') continue;
-    html += `<tr><td>${label}</td><td>${val}</td></tr>`;
+    html += `<tr><td>${label}</td><td>${translate ? _t(val) : val}</td></tr>`;
   }
   html += '</table>';
   return html;
@@ -565,7 +565,7 @@ function renderTable(item, fields) {
 function renderWeaponDetail(item) {
   return `<div class="detail">
     <h2>${item.名称||item.武器名称||'-'}</h2>
-    <div class="meta">${item.类型||''} | ID:${item.ID}</div>
+    <div class="meta">${item.类型||''} | 编号:${item.ID}</div>
     ${renderTable(item, [
       ['类型','类型'],['攻击力','攻击力'],['会心率(%)','会心率'],
       ['属性','属性'],['属性値','属性值'],['防御力','防御力'],
@@ -707,11 +707,27 @@ function renderLocationsDetail(item) {
     ${renderTable(item, [
       ['场地','场地'],['初始区域','初始区域'],
       ['移动区域','移动区域'],['休息区域','休息区域'],
-    ])}
+    ], true)}
   </div>`;
 }
 
 const DIFF_SORT = { '下位':0, '上位':1, 'G位':2, 'G級':2 };
+
+// Simple translations for English terms in game data
+const _t_map = {
+  'Base Camp': '营地', 'Secret': '秘境', 'Camp': '营地',
+  'Volcano': '火山', 'Jungle': '丛林', 'Deserted Island': '孤岛',
+  'Primal Forest': '原生林', 'Frozen Seaway': '冰海',
+  'Dunes': '沙漠', 'Ancestral Steppe': '遗迹',
+  'Verdant Hills': '森丘', 'Swamp': '沼地',
+  'Sunken Hollow': '地底洞窟', 'Flooded Forest': '溪流',
+  'Heaven\'s Mount': '天顶山', 'Polar Field': '极岭',
+  'Ingle Isle': '火山岛', 'Jurassic Frontier': '古代林',
+  'Forlorn Arena': '斗技场', 'Arena': '竞技场',
+  'Great Arena': '大竞技场', 'Battlequarters': '决战场',
+  'Cave': '洞穴', 'Area': '区域',
+};
+function _t(s) { return s ? (_t_map[s] || s) : s; }
 
 function renderGatheringDetail(group) {
   // group = { id, name, locations: [...] }
@@ -747,7 +763,7 @@ function renderGatheringDetail(group) {
     for (const r of rows) {
       const prob = r['概率(%)'];
       html += `<tr>
-        <td><span style="color:var(--text)">${r['采集场']||'-'}</span><br><span style="font-size:12px;color:var(--dim)">${r['区域']||''} ${r['采集点']||''}</span></td>
+        <td><span style="color:var(--text)">${_t(r['采集场'])||'-'}</span><br><span style="font-size:12px;color:var(--dim)">${_t(r['区域'])||''} ${_t(r['采集点'])||''}</span></td>
         <td style="text-align:right;vertical-align:middle;color:var(--accent);font-weight:600;font-size:16px">${prob!=null?prob+'%':'-'}</td>
       </tr>`;
       if (r['备注']) {
