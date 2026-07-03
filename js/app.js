@@ -727,6 +727,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load counts first (tiny file), then render home
   loadData('counts.json').then(c => { counts = c; updateCounts(); });
+  // Preload commonly-used data in background
+  preloadData();
   navigate('home');
 });
 
@@ -736,6 +738,100 @@ function updateCounts() {
     if (counts[id]) el.querySelector('.count').textContent = counts[id];
   });
 }
+
+// === Background preloading ===
+const PRELOAD_ORDER = ['monsters','skills','decorations','recipes','armor','weapons','items'];
+
+function preloadData() {
+  // Load smaller files first, largest last
+  let i = 0;
+  function loadNext() {
+    if (i >= PRELOAD_ORDER.length) return;
+    const id = PRELOAD_ORDER[i++];
+    const cat = CATEGORIES.find(c => c.id === id);
+    if (!cat || cache[cat.file]) { loadNext(); return; }
+    fetch(DATA_BASE + cat.file)
+      .then(r => r.json())
+      .then(d => { cache[cat.file] = d; loadNext(); })
+      .catch(() => loadNext());
+  }
+  // Start preloading after a short delay (let page paint first)
+  setTimeout(loadNext, 800);
+}
+
+// === IndexedDB persistent cache ===
+const DB_NAME = 'mhxx-dex-cache';
+const DB_VER = 1;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('data')) {
+        db.createObjectStore('data');
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function dbLoad(file) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('data', 'readonly');
+      const req = tx.objectStore('data').get(file);
+      req.onsuccess = () => { db.close(); resolve(req.result); };
+      req.onerror = () => { db.close(); reject(null); };
+    });
+  } catch(e) { return null; }
+}
+
+async function dbSave(file, data) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction('data', 'readwrite');
+    tx.objectStore('data').put(data, file);
+    tx.oncomplete = () => db.close();
+  } catch(e) { /* ignore */ }
+}
+
+// Enhanced loadData with IndexedDB persistence
+loadData = async function(file) {
+  if (cache[file]) return cache[file];
+
+  // IndexedDB hit (persistent across sessions)
+  if (file !== 'counts.json') {
+    const dbData = await dbLoad(file);
+    if (dbData) { cache[file] = dbData; return dbData; }
+  }
+
+  const label = CATEGORIES.find(c=>c.file===file)?.label||file;
+  showLoading(true);
+  try {
+    const res = await fetch(DATA_BASE+file);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    cache[file] = data;
+    // Save to IndexedDB for next visit
+    if (file !== 'counts.json') dbSave(file, data);
+    return data;
+  } catch(e) {
+    try {
+      const data = await loadDataXHR(file);
+      cache[file] = data;
+      if (file !== 'counts.json') dbSave(file, data);
+      return data;
+    } catch(e2) {
+      console.error('Load failed:', file, e2);
+      if (isFileProtocol()) { showFileProtocolError(); }
+      else { showError(`加载${label}失败`); }
+      return [];
+    }
+  } finally { showLoading(false); }
+};
 
 // Click delegation for list items
 document.addEventListener('click', e => {
