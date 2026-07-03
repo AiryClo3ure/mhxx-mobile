@@ -1,4 +1,4 @@
-const CACHE = 'mhxx-dex-v1';
+const CACHE = 'mhxx-dex-v2';
 const ASSETS = [
   'index.html',
   'css/style.css',
